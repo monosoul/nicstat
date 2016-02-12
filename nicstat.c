@@ -123,7 +123,7 @@ typedef uint32_t		duplex_t;
 #ifdef OS_LINUX
 #define	GETOPT_OPTIONS		"hi:sS:znplvxtuaMmU"
 #else
-#define	GETOPT_OPTIONS		"hi:sznpklvxtuaMmU"
+#define	GETOPT_OPTIONS		"hi:sS:znpklvxtuaMmU"
 #endif
 
 /*
@@ -250,7 +250,6 @@ typedef struct if_list {
 /* These bits are capabilities - should be static */
 #define	NIC_CAPAB	(NIC_CAN_GLIFFLAGS | NIC_HAVE_KSTATS | NIC_LOOPBACK)
 
-#ifdef OS_LINUX
 struct if_speed_list {
 	struct if_speed_list *next;
 	char *name;
@@ -258,7 +257,6 @@ struct if_speed_list {
 	int duplex;
 };
 static struct if_speed_list *g_if_speed_list = NULL;
-#endif /* OS_LINUX */
 
 /*
  * This will contain everything we need to know about each interface, and
@@ -356,9 +354,7 @@ usage(void)
 {
 	(void) fprintf(stderr,
 	    "USAGE: nicstat [-hvnsxpztualMU] [-i int[,int...]]\n   "
-#ifdef OS_LINUX
 	    "[-S int:mbps[,int:mbps...]] "
-#endif
 	    "[interval [count]]\n"
 	    "\n"
 	    "         -h                 # help\n"
@@ -376,10 +372,8 @@ usage(void)
 	    "         -l                 # list interface(s)\n"
 	    "         -M                 # output in Mbits/sec\n"
 	    "         -U                 # separate %%rUtil and %%wUtil\n"
-#ifdef OS_LINUX
 	    "         -S int:mbps[fd|hd] # tell nicstat the interface\n"
 	    "                            # speed (Mbits/sec) and duplex\n"
-#endif
 	    "    eg,\n");
 	(void) fprintf(stderr,
 	    "       nicstat              # print summary since boot only\n"
@@ -1337,7 +1331,6 @@ find_nicdatap(struct nicdata **headp, struct nicdata **lastp, char *if_name)
 }
 #endif /* OS_LINUX */
 
-#ifdef OS_LINUX
 static int
 find_interface_speed(struct nicdata *nicp)
 {
@@ -1353,11 +1346,12 @@ find_interface_speed(struct nicdata *nicp)
 		}
 		if_speed_list_ptr = if_speed_list_ptr->next;
 	}
+    #ifdef OS_LINUX
 	nicp->speed = 0;
 	nicp->duplex = DUPLEX_UNKNOWN;
+    #endif /* OS_LINUX */
 	return (B_FALSE);
 }
-#endif /* OS_LINUX */
 
 #ifdef OS_SOLARIS
 
@@ -1465,6 +1459,8 @@ update_stats()
 		}
 		nicp->speed = fetch64(nicp->op_ksp, "ifspeed", 0);
 		nicp->duplex = fetch32(nicp->op_ksp, "link_duplex", 0);
+        
+        find_interface_speed(nicp);
 	}
 
 }
@@ -2336,7 +2332,6 @@ sleep_for(int period_ms, struct timeval *start_tv)
 }
 #endif /* OS_LINUX */
 
-#ifdef OS_LINUX
 static void
 init_if_speed_list(char *speed_list)
 {
@@ -2389,7 +2384,6 @@ init_if_speed_list(char *speed_list)
 		if_record = strtok_r(NULL, ",", &speed_list_save_ptr);
 	}
 }
-#endif /* OS_LINUX */
 
 /*
  * split - Split a string of delimited fields, returning an array of char *
@@ -2662,11 +2656,9 @@ main(int argc, char **argv)
 		case 'U':
 			g_opt_U = B_TRUE;
 			break;
-#ifdef OS_LINUX
 		case 'S':
 			init_if_speed_list(optarg);
 			break;
-#endif
 #ifdef OS_SOLARIS
 		case 'k':
 			g_opt_k = B_TRUE;
